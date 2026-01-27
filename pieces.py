@@ -26,6 +26,9 @@ class Piece():
     #one with pieces below it, and one with the pieces above
     #the closest pieces are at the top of the stack
     def vertical(self):
+
+        """down up"""
+
         up = deque()
         down = deque()
         for i in range(8):
@@ -43,6 +46,8 @@ class Piece():
             return down, up
         
     def horizontal(self):
+
+        """left right"""
 
         left = deque()
         right = deque()
@@ -62,42 +67,49 @@ class Piece():
 
     def bdiagonal(self):
          
+        """ne sw"""
         ne = deque()
         sw = deque()
 
         diff = self.coord[0] - self.coord[1]
-
-
-        if diff > 0:
-            for i in range(8-diff):
-
-                if i == self.coord[1]:
-                    continue
-
-                piece = self.findPiece((diff + i, i))
-                if piece:
-                    if i > self.coord[1]:
-                        ne.appendleft(piece)
-                    else:
-                        sw.append(piece)
-
-        else:
-            for i in range(8+diff):
-
-                if i == self.coord[0]:
-                    continue
-
-                piece = self.findPiece((i, i - diff))
-
-                if piece:
-                    if i > self.coord[0]:
-                        ne.appendleft(piece)
-                        print("This")
-                    else:
-                        sw.append(piece)
         
+        xstart = diff if diff > 0 else 0
+        ystart = -diff if diff < 0 else 0
+
+        for i in range(8-diff):
+            if xstart + i == self.coord[0]:
+                continue
+            piece = self.findPiece((xstart + i, ystart + i))
+            if piece:
+                if xstart + i > self.coord[0]:
+                    ne.appendleft(piece)
+                else:
+                    sw.append(piece)
+
         return ne, sw
         
+    def wdiagonal(self):
+
+        """nw se"""
+        nw = deque()
+        se = deque()
+        total = self.coord[0] + self.coord[1]
+
+        xstart = 0 if total -7 < 0 else total - 7
+        ystart = 7 if total -7 > 0 else total
+
+        for i in range(8 - abs(total - 7)):
+            if xstart + i == self.coord[0]:
+                continue
+            piece = self.findPiece((xstart + i, ystart - i))
+            if piece:
+                if xstart + i > self.coord[0]:
+                    se.appendleft(piece)
+                else:
+                    nw.append(piece)
+        return nw, se
+
+
         
 
 #The none_piece is a dummy piece that represents an empty square.
@@ -142,51 +154,10 @@ class Queen(Piece):
     name = "Q"
 class King(Piece):
     name = "K"
+
     inCheck = False 
     def check_in_checK(self):
-        attacks = {direction:deque() for direction in ["up", "down","right", "left", "upleft", "upright", "downleft", "downright"]}
-        
-        for i in range(8):
-            if i == self.coord[0]:
-                continue
-            piece = self.findPiece(self.coord[i], self.coord[0])
-
-            distance = i - self.coord[0]
-
-            if distance < 0:
-                attacks["left"].append(piece)
-            elif distance > 0:
-                attacks["right"].appendleft(piece)
-            
-        
-        difference = abs(self.coord[0] - self.coord[1])
-        shortest = min(self.coord)
-        current = [self.coord[0] - shortest, self.coord[1] - shortest]
-        for i in range(8-difference):
-            if current == self.coord:
-                continue
-            current[0], current[1] = current[0] + i, current[1] + i
-            
-            if current[0] < self.coord[0]:
-                attacks["downleft"].append(self.findPiece(current))
-            else:
-                attacks["upright"].appendleft(self.findPiece(current))
-            
-
-        
-
-
-
-            
-            
-
-                        
-
-
-
-
-
-            
+        pass
             
 
                 
