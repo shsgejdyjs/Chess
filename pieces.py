@@ -16,15 +16,11 @@ class Piece():
     def findPiece(self, coord):
         return self.Board.find_piece(coord)
 
-    #used to identify pieces with print statemenets
     def __repr__(self):
         colourCode = {"White":"W", "Black":"B", "None":" "}
         return colourCode[self.colour] + self.name
     
 
-    #returns two stacks
-    #one with pieces below it, and one with the pieces above
-    #the closest pieces are at the top of the stack
     def vertical(self):
 
         """down up"""
@@ -37,13 +33,12 @@ class Piece():
             
             piece = self.findPiece((self.coord[0],i))
 
-            #only appends if a piece is in the square
-            if piece:
-                if i - self.coord[1] > 0:
-                    up.appendleft(piece)
-                else:
-                    down.append(piece)
-            return down, up
+            
+            if i - self.coord[1] > 0:
+                up.appendleft(piece)
+            else:
+                down.append(piece)
+        return down, up
         
     def horizontal(self):
 
@@ -58,11 +53,11 @@ class Piece():
             
             piece = self.findPiece((i,self.coord[1]))
 
-            if piece:
-                if i - self.coord[0] > 0:
-                    right.appendleft(piece)
-                else:
-                    left.append(piece)
+            
+            if i - self.coord[0] > 0:
+                right.appendleft(piece)
+            else:
+                left.append(piece)
         return left, right
 
     def bdiagonal(self):
@@ -80,11 +75,11 @@ class Piece():
             if xstart + i == self.coord[0]:
                 continue
             piece = self.findPiece((xstart + i, ystart + i))
-            if piece:
-                if xstart + i > self.coord[0]:
-                    ne.appendleft(piece)
-                else:
-                    sw.append(piece)
+            
+            if xstart + i > self.coord[0]:
+                ne.appendleft(piece)
+            else:
+                sw.append(piece)
 
         return ne, sw
         
@@ -102,12 +97,35 @@ class Piece():
             if xstart + i == self.coord[0]:
                 continue
             piece = self.findPiece((xstart + i, ystart - i))
-            if piece:
-                if xstart + i > self.coord[0]:
-                    se.appendleft(piece)
-                else:
-                    nw.append(piece)
+            
+            if xstart + i > self.coord[0]:
+                se.appendleft(piece)
+            else:
+                nw.append(piece)
         return nw, se
+
+
+    def directions(self):
+        """
+        down up left right ne sw nw se
+        """
+        return *self.vertical(), *self.horizontal(), *self.bdiagonal(), *self.wdiagonal()
+
+    def movement(self):
+        pass
+    def valid_moves(self):
+        valid = []
+        moves = self.movement()
+
+        #first need to check if any of the moves block a check
+        #then if a piece is pinned
+
+        for move in moves:
+            pass
+
+        for d in self.Board.kings[self.colour].direction:
+            pass
+            
 
 
         
@@ -127,19 +145,36 @@ class None_piece(Piece):
       
 class Pawn(Piece):
     moved = False
+    movedTwice = False
     name = "P"
     def Movement(self):
         moves = []
-        if not self.findPiece(self.coord + (0,1)):
-            moves.append(self.coord + (0,1))
-            if not self.findPiece(self.coord + (0,2)):
-                moves.append(self.coord + (0,2))
-        if self.findPiece(self.coord + [1,1]).colour == self.Opposite:
-            moves.append(self.coord + (1,1))
-        if self.findPiece(self.coord + (-1,1)).colour == self.Opposite:
-            moves.append(self.coord + (-1,1))
+        if self.moved == False:
+            newCoord = (self.coord[0], self.coord[1] + 2)
+            if not self.findPiece(newCoord):
+                moves.append(newCoord)
+        for i in range(-1,2):
+            newCoord = (self.coord[0] + i, self.coord[1] + 1)
+            if -1 < newCoord[0] < 8:
+                if i != 0 and self.findPiece(newCoord).colour == self.Opposite:
+                    moves.append(newCoord)
+                elif i == 0 and not self.findPiece(newCoord):
+                    moves.append(newCoord)
         
-        return moves   
+        for i in range(-1,2,2):
+            newCoord = (self.coord[0] + i, self.coord[1])
+            if -1 < newCoord[0] < 8:
+                if piece := self.findPiece(newCoord).name == "P" and piece.colour == self.opposite and piece.movedTwice:
+                    moves.append((newCoord[0], newCoord[1] + 1))
+        return moves
+                
+
+
+
+
+
+
+
 class Rook(Piece):
     name = "R"
     moved = False
@@ -156,8 +191,13 @@ class King(Piece):
     name = "K"
 
     inCheck = False 
-    def check_in_checK(self):
-        pass
+
+    
+
+    def check_in_check(self):
+        attacks = []
+
+        
             
 
                 
