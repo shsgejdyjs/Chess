@@ -1,13 +1,18 @@
 import pygame
 import board
-
+import pieces
+from collections import deque
 
 b = board.Board()
 
-rook = b.find_piece((0,0))
-king = b.kings["White"]
 
-k = b.find_piece((1,0))
-print(rook.bdiagonal())
-print(k.bdiagonal())
+k = b.kings["White"]
+
+k.set_direction()
+
+
+p = b.find_piece((0,1))
+
+print(p.movement())
+print(p.valid_moves())
 

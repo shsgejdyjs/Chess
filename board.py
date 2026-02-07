@@ -49,11 +49,15 @@ class Board():
 
         
         #need to identify the kings
-        self.kings = {"White":None, "Black":None}
-        for i in range(8):
-            for j in range(8):
-                if (king := self.Pieces[i,j]).name == "K":
-                    self.kings[king.colour] = king
+        self.kings = {"White":pieces.King, "Black":pieces.King}
+        
+        for coord in self.Pieces:
+            if (king := self.Pieces[coord]).name == "K":
+                self.kings[king.colour] = king
+
+        for coord in self.Pieces:
+            if (piece := self.Pieces[coord]):
+                piece.set_king(self.kings[piece.colour])
         
 
     def display_board(self):
