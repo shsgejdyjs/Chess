@@ -1,7 +1,19 @@
 import pieces
+import pygame
+import os
+from constants import *
 
 class Board():
     def __init__(self, Pieces = None):
+        self.all_sprites = pygame.sprite.Group()
+        
+        self.surface = pygame.Surface((400,400))
+        self.surface.fill("white")
+        for i in range(8):
+            for j in range(8):
+                if (i + j)%2 == 0:
+                    pygame.draw.rect(self.surface, "black", pygame.Rect(i*50, j*50, 50,50))
+        
         
         if Pieces == None:
             #initialises a dictionary with no pieces
@@ -58,6 +70,10 @@ class Board():
         for coord in self.Pieces:
             if (piece := self.Pieces[coord]):
                 piece.set_king(self.kings[piece.colour])
+            if piece:
+                
+                self.surface.blit(piece.image, (((10,360) - piece.coord*(-50,50)).coord))
+            
         
 
     def display_board(self):

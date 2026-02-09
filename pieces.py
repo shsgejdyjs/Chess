@@ -2,6 +2,8 @@ from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING
 import pygame
+import os
+from constants import *
 if TYPE_CHECKING:
     from board import Board
 
@@ -24,7 +26,7 @@ class Coordinate():
     def __repr__(self):
         return str(self.coord)
     def __setitem__(self, i):
-        return Coordinate(self.coord[0] if i[0] == 0 else i[0], self.coord[1] if i[1] == 0 else i[1])
+        return Coordinate((self.coord[0] if i[0] == 0 else i[0], self.coord[1] if i[1] == 0 else i[1]))
     def __hash__(self):
         return hash(self.coord)
     def __eq__(self, other):
@@ -34,6 +36,9 @@ class Coordinate():
         
     def __lt__(self, other):
         return self.coord[0]**2 + self.coord[1]**2 < other[0]**2 + other[1]**2
+
+    def __mul__(self, other):
+        return Coordinate((self.coord[0]*other[0], self.coord[1]*other[1]))
 
 def normalise(vector):
     return (int(abs(vector[0])/vector[0]) if vector[0] else 0, int(abs(vector[1])/vector[1]) if vector[1] else 0)
@@ -45,7 +50,7 @@ class Piece(pygame.sprite.Sprite):
     pinned = []
     move_direction = []
     valid = []
-    def __init__(self, Colour, Coordinates, board):
+    def __init__(self, Colour, Coordinates, board, image):
         pygame.sprite.Sprite.__init__(self)
         
         self.colour = Colour
@@ -55,10 +60,16 @@ class Piece(pygame.sprite.Sprite):
             self.Opposite = "Black"
         else:
             self.Opposite = "White"
+        
+        self.image = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'assets', image)).convert_alpha(),(30,30))
+        self.rect = self.image.get_rect()
+        self.rect.center = ((25,375) - self.coord*(-50,50)).coord
+
     
     
     def findPiece(self, coord):
         return self.board.find_piece(coord)
+        
     
     def __repr__(self):
         colourCode = {"White":"W", "Black":"B", "None":" "}
@@ -203,17 +214,21 @@ class Piece(pygame.sprite.Sprite):
 class None_piece(Piece):
     name = "X"
 
-    def __init__(self, Coordinates = {9,9}, Board=None):
-        super().__init__("None", Coordinates, Board)
-
     def __bool__(self):
         return False
-    
+
+    def __init__(self, Coordinates, board):
+        self.colour = "None"
+        self.coord = Coordinates
+        self.board = board
       
 class Pawn(Piece):
     moved = False
     movedTwice = False
     name = "P"
+    def __init__(self, Colour, Coordinates, board):
+        image = "white_pawn.png" if Colour == "White" else "black_pawn.png"
+        super().__init__(Colour, Coordinates, board, image)
     def movement(self):
         moves = []
         for i in range(-1,2):
@@ -238,6 +253,11 @@ class Rook(Piece):
     name = "R"
     moved = False
     move_direction = [(-1,0),(1,0),(0,-1),(0,1)]
+    def __init__(self, Colour, Coordinates, board):
+        image = "white_rook.png" if Colour == "White" else "black_rook.png"
+        super().__init__(Colour, Coordinates, board, image)
+        
+        
     def movement(self):
         return super().movement(*self.horizontal(), *self.vertical())
 
@@ -246,16 +266,24 @@ class Rook(Piece):
 class Bishop(Piece):
     name = "B"
     move_direction = [(1,1),(-1,-1),(1,-1),(-1,1)]
+    def __init__(self, Colour, Coordinates, board):
+        image = "white_bishop.png" if Colour == "White" else "black_bishop.png"
+        super().__init__(Colour, Coordinates, board, image)
 
     def movement(self):
         return super().movement(*self.bdiagonal(), *self.wdiagonal())
 class Knight(Piece):
     name = "N"
+    def __init__(self, Colour, Coordinates, board):
+        image = "white_knight.png" if Colour == "white" else "black_knight.png"
+        super().__init__(Colour, Coordinates, board, image)
 
 class Queen(Piece):
     name = "Q"
     move_direction = [(1,1),(-1,-1),(1,-1),(-1,1),(-1,0),(1,0),(0,-1),(0,1)]
-
+    def __init__(self, Colour, Coordinates, board):
+        image = "white_queen.png" if Colour == "White" else "black_queen.png"
+        super().__init__(Colour, Coordinates, board, image)
     def movement(self):
         return super().movement(*self.bdiagonal(), *self.wdiagonal(), *self.horizontal(), *self.vertical() )
 class King(Piece):
@@ -265,6 +293,9 @@ class King(Piece):
     
     attacks = {}
 
+    def __init__(self, Colour, Coordinates, board):
+        image = "white_king.png" if Colour == "White" else "black_king.png"
+        super().__init__(Colour, Coordinates, board, image)
         
     def check_in_check(self):
         #this needs to check what directions the king is being checked from if any
