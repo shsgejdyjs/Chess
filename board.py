@@ -61,20 +61,21 @@ class Board():
         
 
     def display_board(self):
+        
         pass
-  
-
-    def move(self, piece, new_coord):
-        self.Pieces[new_coord] = piece
     
     def find_piece(self, coordinate) -> pieces.Piece:
-        if not (0 <= coordinate[0] <= 7) or not (0 <= coordinate[1] <= 7):
-            return pieces.None_piece((8,8),self)
-        return self.Pieces[coordinate] 
-        
+        return self.Pieces[coordinate]  
+
+    def move_piece(self, piece: pieces.Piece, new):
+        self.Pieces[piece.coord] = pieces.None_piece()
+        self.Pieces[new] = piece
+        piece.coord.coord = new
+
     
     def __repr__(self):
         out = ""
         for j in range(8):
             out += "|".join([self.Pieces[i,7-j].__repr__() for i in range(8)]) + "\n"
         return out
+
