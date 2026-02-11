@@ -3,18 +3,51 @@ import pygame
 import os
 from constants import *
 
-class Board():
-    def __init__(self, Pieces = None):
-        self.all_sprites = pygame.sprite.Group()
+class Square(pygame.sprite.Sprite):
+    highlight = False
+    hover = False
+    def __init__(self, coord, board_length, colour):
+        pygame.sprite.Sprite.__init__(self)
+        self.length = board_length
+        self.colour = colour
+        self.coord = coord
+        self.image = pygame.Surface((board_length/8, board_length/8), pygame.SRCALPHA)
+        self.image.fill((*colour, 255))
+        self.rect = self.image.get_rect()
+        self.rect.center = self.coord.convert((0,0), board_length)
+
         
-        self.surface = pygame.Surface((400,400))
-        self.surface.fill("white")
+        
+    def update(self, surface):
+        surface.blit(self.image, self.rect)
+
+        if self.hover:
+            self.rectangle = pygame.Surface((self.length/8, self.length/8), pygame.SRCALPHA)
+            pygame.draw.rect(self.rectangle, self.hover, self.rectangle.get_rect() , int(self.length/8))
+
+            surface.blit(self.rectangle, self.rect)
+
+        elif self.highlight:
+            self.circle = pygame.Surface((self.length/8, self.length/8), pygame.SRCALPHA)
+            pygame.draw.circle(self.circle, (0,128,0,128) ,(self.length/16, self.length/16), self.length/48 )
+
+            surface.blit(self.circle,self.rect)
+            
+        
+            
+
+class Board():
+    def __init__(self, Pieces = None, length = 400):
+        self.piece_sprites = pygame.sprite.Group()
+        self.squares = pygame.sprite.Group()
+        self.length = length
         for i in range(8):
             for j in range(8):
-                if (i + j)%2 == 0:
-                    pygame.draw.rect(self.surface, "black", pygame.Rect(i*50, j*50, 50,50))
-        
-        
+                colour = (0,0,0) if (i+j)%2 == 0 else (255,255,255)
+                square = Square(pieces.Coordinate((i,j)), length, colour)
+                self.squares.add(square)
+                
+                
         if Pieces == None:
             #initialises a dictionary with no pieces
             self.Pieces = {(i,j): pieces.None_piece((i,j), self) for i in range(8) for j in range(8)}
@@ -71,21 +104,36 @@ class Board():
             if (piece := self.Pieces[coord]):
                 piece.set_king(self.kings[piece.colour])
             if piece:
+                self.piece_sprites.add(piece)
                 
-                self.surface.blit(piece.image, (((10,360) - piece.coord*(-50,50)).coord))
-            
-        
+                
+    
 
-    def display_board(self):
-        
-        pass
+    
     
     def find_piece(self, coordinate) -> pieces.Piece:
         return self.Pieces[coordinate]  
+    
+    def highlight_squares(self, coords, piece_coord):
+        for square in self.squares:
+            if square.coord == piece_coord:
+                square.hover = (0,0,200,200)
+            elif square.coord in coords:
+                square.highlight = (0,0,128,128)
+            else:
+                square.highlight = False
+    def unhighlight_squares(self):
+        for square in self.squares:
+            square.hover = False
+            square.highlight = False
 
     def move_piece(self, piece: pieces.Piece, new):
-        self.Pieces[piece.coord] = pieces.None_piece()
-        self.Pieces[new] = piece
+        self.Pieces[piece.coord.coord] = pieces.None_piece(piece.coord.coord, self)
+        self.piece_sprites.remove(self.Pieces[new])
+        if piece.pinned and self.Pieces[new].attacking:
+            piece.pinned = False
+        self.Pieces[new.coord] = piece
+        self.Pieces[new.coord].rect.center = new.convert((0,0), self.length)
         piece.coord.coord = new
 
     
