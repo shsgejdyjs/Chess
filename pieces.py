@@ -377,10 +377,24 @@ class King(Piece):
 
     def predict_check(self, coord):
         directions = dict(zip([(0,-1), (0,1), (-1,0), (1,0), (1,1), (-1,-1), (-1,1), (1,-1)], (*self.vertical(coord), *self.horizontal(coord), *self.bdiagonal(coord), *self.wdiagonal(coord))))
-
+        for d in directions:
+            for checkpiece in directions[d]:
+                if checkpiece.colour == self.Opposite and d in checkpiece.move_direction:
+                    return True
+        return False
     def movement(self):
-        moves = [self.coord + (i,j) for i in range(-1,2) for j in range(-1,2) if not (self.coord + (i,j)).out_of_bounds and self.findPiece(self.coord + (i,j)).colour != self.colour]
+
+        moves = [self.coord + (i,j) for i in range(-1,2) for j in range(-1,2)]
+
         return moves
+
+    def valid_moves(self):
+        valid = []
+        for move in self.movement():
+            if not move.out_of_bounds() and not self.predict_check(move) and move != self.coord and self.findPiece(move).colour != self.colour:
+                valid.append(move)
+        self.valid = valid
+        return valid
 
 
         
