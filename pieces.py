@@ -25,8 +25,8 @@ class Coordinate():
         return self.coord[i]
     def __repr__(self):
         return str(self.coord)
-    def __setitem__(self, i):
-        return Coordinate((self.coord[0] if i[0] == 0 else i[0], self.coord[1] if i[1] == 0 else i[1]))
+    def replace(self, other):
+        return Coordinate((self.coord[0] if other[0] == 0 else other[0], self.coord[1] if other[1] == 0 else other[1]))
     def __hash__(self):
         return hash(self.coord)
     def __eq__(self, other):
@@ -50,9 +50,9 @@ class Coordinate():
         if not -1<self[0]<8 or not -1<self[1]<8:
             return True
         return False
-def normalise(vector):
-    return (int(abs(vector[0])/vector[0]) if vector[0] else 0, int(abs(vector[1])/vector[1]) if vector[1] else 0)
- 
+    def normalise(self):
+        return (int(abs(self[0])/self[0]) if self[0] else 0, int(abs(self[1])/self[1]) if self[1] else 0)
+    
 class Piece(pygame.sprite.Sprite):
     name = "a"
     king : King = None
@@ -60,6 +60,7 @@ class Piece(pygame.sprite.Sprite):
     pinned = []
     move_direction = []
     valid = []
+    moved = False
     
     click = False
 
@@ -82,7 +83,7 @@ class Piece(pygame.sprite.Sprite):
                 
     
     
-    def findPiece(self, coord):
+    def find_piece(self, coord):
         return self.board.find_piece(coord)
     
     def check_click(self, point):
@@ -110,7 +111,7 @@ class Piece(pygame.sprite.Sprite):
             if i == coord[1]:
                 continue
             
-            piece = self.findPiece((coord[0],i))
+            piece = self.find_piece((coord[0],i))
 
             
             if i - coord[1] > 0:
@@ -133,7 +134,7 @@ class Piece(pygame.sprite.Sprite):
             if i == coord[0]:
                 continue
             
-            piece = self.findPiece((i,coord[1]))
+            piece = self.find_piece((i,coord[1]))
 
             
             if i - coord[0] > 0:
@@ -160,7 +161,7 @@ class Piece(pygame.sprite.Sprite):
         for i in range(8-abs(diff)):
             if xstart + i == coord[0]:
                 continue
-            piece = self.findPiece((xstart + i, ystart + i))
+            piece = self.find_piece((xstart + i, ystart + i))
             
             if xstart + i > coord[0]:
                 ne.append(piece)
@@ -184,7 +185,7 @@ class Piece(pygame.sprite.Sprite):
         for i in range(8 - abs(total - 7)):
             if xstart + i == coord[0]:
                 continue
-            piece = self.findPiece((xstart + i, ystart - i))
+            piece = self.find_piece((xstart + i, ystart - i))
             
             if xstart + i > coord[0]:
                 se.append(piece)
@@ -200,21 +201,27 @@ class Piece(pygame.sprite.Sprite):
         valid = []
         moves = self.movement()
         self.king.check_in_check()
-        
         old_distance = self.coord - self.king.coord
+
+        if len(self.king.attacks) == 3 or len(self.king.attacks) == 2 and self.king.attacks["knight"]:
+            self.valid = valid
+            return valid
 
         for move in moves:
             #vector from king to the new coord
             new_distance = move - self.king.coord
 
-            if self.king.attacks:
-                if (d:=normalise(new_distance)) in self.king.attacks:
-                    
+            if knight:=self.king.attacks["knight"]:
+                if move == knight.coord:
+                    valid.append(move)
+            elif len(self.king.attacks) == 2:
+                if not(new_distance[0] * new_distance[1] !=0 and abs(new_distance[0]) != abs(new_distance[1])) and (d:=new_distance.normalise()) in self.king.attacks:
                     if new_distance <= (self.king.attacks[d].coord -self.king.coord):
                         valid.append(move)
                 
             elif self.pinned:
-                if not(new_distance[0] * new_distance[1] !=0 and abs(new_distance[0]) != abs(new_distance[1])) and normalise(new_distance) == normalise(old_distance):
+                
+                if not(new_distance[0] * new_distance[1] !=0 and abs(new_distance[0]) != abs(new_distance[1])) and new_distance.normalise() == old_distance.normalise():
                     valid.append(move)
             
             else:
@@ -254,39 +261,58 @@ class None_piece(Piece):
         self.colour = "None"
         self.coord = Coordinates
         self.board = board
-      
+
+
+class Queen(Piece):
+    name = "Q"
+    move_direction = [(1,1),(-1,-1),(1,-1),(-1,1),(-1,0),(1,0),(0,-1),(0,1)]
+    def __init__(self, Colour, Coordinates, board):
+        image = "white_queen.png" if Colour == "White" else "black_queen.png"
+        super().__init__(Colour, Coordinates, board, image)
+    def movement(self):
+        return super().movement(*self.bdiagonal(), *self.wdiagonal(), *self.horizontal(), *self.vertical() )
+
 class Pawn(Piece):
-    moved = False
-    movedTwice = False
+    
+    moved_twice = False
     name = "P"
     def __init__(self, Colour, Coordinates, board):
         image = "white_pawn.png" if Colour == "White" else "black_pawn.png"
         super().__init__(Colour, Coordinates, board, image)
+    
+        
     def movement(self):
         moves = []
         direction = 1 if self.colour == "White" else -1
         for i in range(-1,2):
             newCoord = self.coord + (i,direction)
             if not newCoord.out_of_bounds():
-                if i != 0 and self.findPiece(newCoord).colour == self.Opposite:
+                if i != 0 and self.find_piece(newCoord).colour == self.Opposite:
                     moves.append(newCoord)
-                elif i == 0 and not self.findPiece(newCoord):
+                elif i == 0 and not self.find_piece(newCoord):
                     moves.append(newCoord)
-                    if not self.moved and not self.findPiece(newCoord := newCoord + (0,direction)):
+                    if not self.moved and not self.find_piece(newCoord := newCoord + (0,direction)):
                         moves.append(newCoord)
                         
         
         for i in range(-1,2,2):
             newCoord = self.coord + (i,0)
+            
             if -1 < newCoord[0] < 8:
-                if (piece := self.findPiece(newCoord)).name == "P" and piece.colour == self.Opposite and piece.movedTwice:
+                piece = self.find_piece(newCoord)
+                if (piece := self.find_piece(newCoord)).name == "P" and piece.colour == self.Opposite and piece.moved_twice:
                     moves.append(newCoord + (0,direction))
         return moves
-    
+
+
+
+
+
+
                 
 class Rook(Piece):
     name = "R"
-    moved = False
+    
     move_direction = [(-1,0),(1,0),(0,-1),(0,1)]
     def __init__(self, Colour, Coordinates, board):
         image = "white_rook.png" if Colour == "White" else "black_rook.png"
@@ -313,53 +339,61 @@ class Knight(Piece):
     def __init__(self, Colour, Coordinates, board):
         image = "white_knight.png" if Colour == "White" else "black_knight.png"
         super().__init__(Colour, Coordinates, board, image)
+    
+    def movement(self):
+        moves = [self.coord + Coordinate((i,j)) for i in [-1,1,-2,2] for j in [-1,1,-2,2] if abs(i*j) == 2]
+        return moves
 
     def valid_moves(self):
+        self.king.check_in_check()
         valid = []
-        if len(self.king.attacks) > 1:
+        if len(self.king.attacks) == 3 or len(self.king.attacks) ==2 and self.king.attacks["knight"]:
+            self.valid = []
             return []
-        if not self.pinned:
-            moves = [Coordinate((i,j)) for i in [-1,1,-2,2] for j in [-1,1,-2,2] if abs(i*j) == 2]
-            for move in moves:
-                new_coord = self.coord + move
-                if not new_coord.out_of_bounds():
-                    
-                    if self.findPiece(new_coord) != self.colour:
-                        valid.append(new_coord)
+        
+        moves = self.movement()
+        for move in moves:
+
+            if knight := self.king.attacks["knight"]:
+                if move == knight.coord:
+                    valid.append(move)
+            elif len(self.king.attacks) == 2:   
+                
+                new_distance = move - self.king.coord
+                if not(new_distance[0] * new_distance[1] !=0 and abs(new_distance[0]) != abs(new_distance[1])) and (d := new_distance.normalise()) in self.king.attacks:
+                    attack_distance = self.king.attacks[d].coord - self.king.coord
+                    if new_distance <= attack_distance:
+                        valid.append(move)
+
+            elif not self.pinned:
+                if not move.out_of_bounds():
+                    if self.find_piece(move).colour != self.colour:
+                        valid.append(move)
+        self.valid = valid
         return valid
 
-class Queen(Piece):
-    name = "Q"
-    move_direction = [(1,1),(-1,-1),(1,-1),(-1,1),(-1,0),(1,0),(0,-1),(0,1)]
-    def __init__(self, Colour, Coordinates, board):
-        image = "white_queen.png" if Colour == "White" else "black_queen.png"
-        super().__init__(Colour, Coordinates, board, image)
-    def movement(self):
-        return super().movement(*self.bdiagonal(), *self.wdiagonal(), *self.horizontal(), *self.vertical() )
 class King(Piece):
     name = "K"
 
-    inCheck = False 
+    attacks = {"knight":None}
     
-    attacks = {}
 
     def __init__(self, Colour, Coordinates, board):
         image = "white_king.png" if Colour == "White" else "black_king.png"
         super().__init__(Colour, Coordinates, board, image)
     
     
-    def check_in_check(self, coord = None):
+    def check_in_check(self):
         #this needs to check what directions the king is being checked from if any
         
-        self.direction = dict(zip([(0,-1), (0,1), (-1,0), (1,0), (1,1), (-1,-1), (-1,1), (1,-1)], (*self.vertical(coord), *self.horizontal(coord), *self.bdiagonal(coord), *self.wdiagonal(coord))))
-
+        self.direction = dict(zip([(0,-1), (0,1), (-1,0), (1,0), (1,1), (-1,-1), (-1,1), (1,-1)], (*self.vertical(), *self.horizontal(), *self.bdiagonal(), *self.wdiagonal())))
+        self.attacks = {"knight":None}
         for d in self.direction:
             first = None
-            
             second = None
             for check_piece in self.direction[d]:
                 check_piece : Piece
-
+                
                 if not first:
                     if check_piece:
                         first = check_piece
@@ -368,38 +402,81 @@ class King(Piece):
                             check_piece.attacking = True
                             self.attacks[d] = check_piece
                             
-                if second == None and first:
+                            
+                elif second == None:
                     if check_piece:
                         second = check_piece
                     if first.colour == self.colour and check_piece.colour == self.Opposite:
                         if d in check_piece.move_direction:
                             first.pinned = d
+        for i in range(-1,2,2):
+            direction = 1 if self.colour == "White" else -1
+
+            new_coord = self.coord + (i,direction)
+            if not new_coord.out_of_bounds() and (piece:=self.find_piece(new_coord)).name == "P" and piece.colour == self.Opposite:
+                self.attacks[(i,direction)] = piece
+                piece.attacking = True
+        for knight in self.board.knights[self.Opposite]:
+            if self.coord in knight.movement():
+                self.attacks["knight"] = knight
+                knight.attacking = True
+                
+
 
     def predict_check(self, coord):
         directions = dict(zip([(0,-1), (0,1), (-1,0), (1,0), (1,1), (-1,-1), (-1,1), (1,-1)], (*self.vertical(coord), *self.horizontal(coord), *self.bdiagonal(coord), *self.wdiagonal(coord))))
         for d in directions:
+            count = 0
             for checkpiece in directions[d]:
-                if checkpiece.colour == self.Opposite and d in checkpiece.move_direction:
+                if checkpiece:
+                    count +=1
+                if checkpiece.colour == self.Opposite and d in checkpiece.move_direction and count == 1:
                     return True
+        for i in range(-1,2,2):
+            direction = 1 if self.colour == "White" else -1
+            new_coord = coord + (i,direction)
+            if not new_coord.out_of_bounds() and (piece:=self.find_piece(new_coord)).name == "P" and piece.colour == self.Opposite:
+                return True
+        
+        for knight in self.board.knights[self.Opposite]:
+            if coord in knight.movement():
+                return True
+        
+        opposite_king = self.board.kings[self.Opposite]
+        if coord in opposite_king.movement():
+            return True
+
+
         return False
+    
     def movement(self):
-
-        moves = [self.coord + (i,j) for i in range(-1,2) for j in range(-1,2)]
-
+        moves = [self.coord + (i,j) for i in range(-1,2) for j in range(-1,2) if (i,j) != (0,0)]
         return moves
-
+    
     def valid_moves(self):
         valid = []
-        for move in self.movement():
-            if not move.out_of_bounds() and not self.predict_check(move) and move != self.coord and self.findPiece(move).colour != self.colour:
+        moves = self.movement()
+        for move in moves:
+            if not move.out_of_bounds() and not self.predict_check(move) and self.find_piece(move).colour != self.colour:
                 valid.append(move)
+        if self.moved == False:
+            left, right = self.horizontal()
+            for i in range(-1,2,2):
+                current = left if i == -1 else right
+                for piece in current:
+                    if piece and piece.coord[0] not in [0,7] and piece.name != "R":
+                        break
+                    else:
+                        if piece.moved == False and not (self.attacks["knight"] or len(self.attacks) > 1):
+                            new_coord = self.coord + (i*2,0)
+                            if not self.predict_check(new_coord) and not self.predict_check(new_coord + (-i,0)):
+                                valid.append(self.coord + (i*2,0))
+                                r = 7 if i == 1 else 0
+                                valid.append(Coordinate((r,self.coord[1])))
+                            
+                
+        
         self.valid = valid
         return valid
-
-
-        
-            
-
-                
 
 

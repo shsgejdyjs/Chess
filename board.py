@@ -6,6 +6,7 @@ from constants import *
 class Square(pygame.sprite.Sprite):
     highlight = False
     hover = False
+    outline = False
     def __init__(self, coord, board_length, colour):
         pygame.sprite.Sprite.__init__(self)
         self.length = board_length
@@ -23,13 +24,18 @@ class Square(pygame.sprite.Sprite):
 
         if self.hover:
             self.rectangle = pygame.Surface((self.length/8, self.length/8), pygame.SRCALPHA)
-            pygame.draw.rect(self.rectangle, self.hover, self.rectangle.get_rect() , int(self.length/8))
+            pygame.draw.rect(self.rectangle, self.hover, self.rectangle.get_rect())
 
+            surface.blit(self.rectangle, self.rect)
+        
+        elif self.outline:
+            self.rectangle = pygame.Surface((self.length/8, self.length/8), pygame.SRCALPHA)
+            pygame.draw.rect(self.rectangle,self.outline, self.rectangle.get_rect(),3 )
             surface.blit(self.rectangle, self.rect)
 
         elif self.highlight:
             self.circle = pygame.Surface((self.length/8, self.length/8), pygame.SRCALPHA)
-            pygame.draw.circle(self.circle, (0,128,0,128) ,(self.length/16, self.length/16), self.length/48 )
+            pygame.draw.circle(self.circle, (0,128,0,200) ,(self.length/16, self.length/16), self.length/48 )
 
             surface.blit(self.circle,self.rect)
             
@@ -95,15 +101,16 @@ class Board():
         
         #need to identify the kings
         self.kings = {"White":pieces.King, "Black":pieces.King}
-        
+        self.knights = {"White":[], "Black":[]}
         for coord in self.Pieces:
-            if (king := self.Pieces[coord]).name == "K":
-                self.kings[king.colour] = king
+            if (piece := self.Pieces[coord]).name == "K":
+                self.kings[piece.colour] = piece
+            elif piece.name == "N":
+                self.knights[piece.colour].append(piece)
 
         for coord in self.Pieces:
             if (piece := self.Pieces[coord]):
                 piece.set_king(self.kings[piece.colour])
-            if piece:
                 self.piece_sprites.add(piece)
                 
                 
@@ -118,6 +125,8 @@ class Board():
         for square in self.squares:
             if square.coord == piece_coord:
                 square.hover = (0,0,200,200)
+            elif self.find_piece(square.coord) and square.coord in coords:
+                square.outline = (0,128,0,255)
             elif square.coord in coords:
                 square.highlight = (0,0,128,128)
             else:
@@ -126,15 +135,58 @@ class Board():
         for square in self.squares:
             square.hover = False
             square.highlight = False
+            square.outline = False
 
     def move_piece(self, piece: pieces.Piece, new):
-        self.Pieces[piece.coord.coord] = pieces.None_piece(piece.coord.coord, self)
+        piece.moved = True
+        current = False
+        if piece.name == "P" and abs((new - piece.coord)[1]) == 2:
+            piece.moved_twice = True
+            current = True
+        
+        for p in self.Pieces.values():
+            if piece.colour == p.colour and p.name == "P" and p != piece:
+                p.moved_twice = False
+
+        
+        if piece.name == "P" and abs((new-piece.coord)[0]) ==1 and not self.Pieces[new]:
+            
+            direction = 1 if piece.colour == "White" else -1
+            c = new + (0, -direction)
+            p = self.Pieces[c]
+            self.Pieces[c] = pieces.None_piece(c, self)
+            self.piece_sprites.remove(p)
+
+        if piece.name == "K" and abs(diff:=(new-piece.coord)[0]) >= 2:
+            c = 7 if diff > 0 else 0
+            
+            rook = self.Pieces[(c,piece.coord[1])]
+            self.move_piece(rook, piece.coord + (int(diff/abs(diff)),0))
+            if abs(diff) > 2:
+                    k = 2 if diff > 0 else -2
+                    new = piece.coord + (k,0)
+
+
+
+        self.Pieces[piece.coord] = pieces.None_piece(piece.coord.coord, self)
         self.piece_sprites.remove(self.Pieces[new])
-        if piece.pinned and self.Pieces[new].attacking:
-            piece.pinned = False
-        self.Pieces[new.coord] = piece
-        self.Pieces[new.coord].rect.center = new.convert((0,0), self.length)
+        for k in self.knights:
+            for knight in self.knights[k]:
+                if self.Pieces[new] == knight:
+                    self.knights[k].remove(knight)
+        # if piece.pinned and self.Pieces[new].attacking:
+        #     piece.pinned = False
+        
+        self.Pieces[new] = piece
+        self.Pieces[new].rect.center = new.convert((0,0), self.length)
         piece.coord.coord = new
+
+        if piece.name == "P" and new[1] == 7:
+            self.piece_sprites.remove(piece)
+            promoted_piece = pieces.Queen(piece.colour, piece.coord, self)
+            self.Pieces[new] = promoted_piece
+            self.piece_sprites.add(promoted_piece)
+            promoted_piece.set_king(piece.king)
 
     
     def __repr__(self):
