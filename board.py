@@ -139,10 +139,9 @@ class Board():
 
     def move_piece(self, piece: pieces.Piece, new):
         piece.moved = True
-        current = False
+        
         if piece.name == "P" and abs((new - piece.coord)[1]) == 2:
             piece.moved_twice = True
-            current = True
         
         for p in self.Pieces.values():
             if piece.colour == p.colour and p.name == "P" and p != piece:
@@ -181,12 +180,7 @@ class Board():
         self.Pieces[new].rect.center = new.convert((0,0), self.length)
         piece.coord.coord = new
 
-        if piece.name == "P" and new[1] == 7:
-            self.piece_sprites.remove(piece)
-            promoted_piece = pieces.Queen(piece.colour, piece.coord, self)
-            self.Pieces[new] = promoted_piece
-            self.piece_sprites.add(promoted_piece)
-            promoted_piece.set_king(piece.king)
+        
 
     
     def __repr__(self):

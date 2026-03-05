@@ -43,7 +43,7 @@ class Coordinate():
     def __mul__(self, other):
         return Coordinate((self.coord[0]*other[0], self.coord[1]*other[1]))
     
-    def convert(self, start, board_length) -> tuple:
+    def convert(self, start = (0,0), board_length=1) -> tuple:
         return (self * (board_length/8, -board_length/8) + (board_length/16, 15*board_length/16) + start).coord
 
     def out_of_bounds(self):
@@ -66,7 +66,7 @@ class Piece(pygame.sprite.Sprite):
 
     def __init__(self, Colour, Coordinates, board, image):
         pygame.sprite.Sprite.__init__(self)
-        
+        self.moved = False
         self.colour = Colour
         self.coord = Coordinate(Coordinates)
         self.board : Board = board
@@ -76,7 +76,7 @@ class Piece(pygame.sprite.Sprite):
             self.Opposite = "White"
         
         length = self.board.length
-        self.image = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'assets', image)).convert_alpha(),(7*length/80, 7*length/80))
+        self.image = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'assets', Colour.lower() + '_' + image + '.png')).convert_alpha(),(7*length/80, 7*length/80))
         self.rect = self.image.get_rect()
         self.rect.center = self.coord.convert((0,0), length)
         
@@ -267,7 +267,7 @@ class Queen(Piece):
     name = "Q"
     move_direction = [(1,1),(-1,-1),(1,-1),(-1,1),(-1,0),(1,0),(0,-1),(0,1)]
     def __init__(self, Colour, Coordinates, board):
-        image = "white_queen.png" if Colour == "White" else "black_queen.png"
+        image = 'queen'
         super().__init__(Colour, Coordinates, board, image)
     def movement(self):
         return super().movement(*self.bdiagonal(), *self.wdiagonal(), *self.horizontal(), *self.vertical() )
@@ -277,7 +277,7 @@ class Pawn(Piece):
     moved_twice = False
     name = "P"
     def __init__(self, Colour, Coordinates, board):
-        image = "white_pawn.png" if Colour == "White" else "black_pawn.png"
+        image = 'pawn'
         super().__init__(Colour, Coordinates, board, image)
     
         
@@ -304,18 +304,80 @@ class Pawn(Piece):
                     moves.append(newCoord + (0,direction))
         return moves
 
+    def promote(self, surface, board_length, new_coord):
+        p = promote_window(new_coord, board_length, self.colour)
+        sprites = pygame.sprite.Group(p)
+        running = True
+        s = surface.copy()
+        while running:
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if not p.rect.collidepoint(pygame.mouse.get_pos()):
+                        running = False
+                        return False
+
+            
+                    
+            surface.fill("black")
+            surface.blit(s, (0,0))
+            
+            for piece in p.promote_pieces.values():
+                if piece[1].collidepoint(pygame.mouse.get_pos()):
+                    pygame.draw.rect(surface, (255,0,0,0), piece[1].scale_by(1.2) )
+            sprites.update()
+            sprites.draw(surface)
+            
+            pygame.display.flip()
+        
+            
+                    
 
 
+class promote_window(pygame.sprite.Sprite):
+    def __init__(self, coord:Coordinate, length, colour):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50,200), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.rect.topleft = coord.convert((-25,-25), length)
+        self.promote_pieces = {"Queen":[None, None], "Rook":[None, None], "Knight":[None, None], "Bishop":[None, None]}
 
+        self.length = length
+        current = Coordinate((8,8))
+        current2 = Coordinate(self.rect.topleft) + (8,8)
+        
+        for piece in self.promote_pieces:
+            self.promote_pieces[piece][0] = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'assets', colour.lower() + '_' + piece.lower() + '.png')), (7*length/80, 7*length/80)).convert_alpha()
+            self.promote_pieces[piece][1] = self.promote_pieces[piece][0].get_rect()
+            self.promote_pieces[piece][1].topleft = current.coord
+            self.image.blit(self.promote_pieces[piece][0], self.promote_pieces[piece][1])
+            self.promote_pieces[piece][1].topleft = current2.coord
+            current = current + (0,50)
+            current2 = current2 + (0,50)
+            
+    def update(self):
+        self.image = pygame.Surface((50,200), pygame.SRCALPHA)
+        circle_center = Coordinate((25,25))
+        
+        for piece in self.promote_pieces.values():
+            scale = 1
+            if piece[1].collidepoint(pygame.mouse.get_pos()):
+                pygame.draw.rect(self.image, (0,128,128,0), piece[1].scale_by(1.2) )
+                scale = 1.2
+            else:
+                pygame.draw.circle(self.image, (128,128,128), circle_center.coord, 7*self.length/120)
+            self.image.blit(pygame.transform.scale_by(piece[0], scale).convert_alpha(), (circle_center+(-17,-17)).coord)
+            circle_center = circle_center + (0,50)
+            
 
-
-                
 class Rook(Piece):
     name = "R"
     
     move_direction = [(-1,0),(1,0),(0,-1),(0,1)]
     def __init__(self, Colour, Coordinates, board):
-        image = "white_rook.png" if Colour == "White" else "black_rook.png"
+        image = 'rook'
         super().__init__(Colour, Coordinates, board, image)
         
         
@@ -328,7 +390,7 @@ class Bishop(Piece):
     name = "B"
     move_direction = [(1,1),(-1,-1),(-1,1),(1,-1)]
     def __init__(self, Colour, Coordinates, board):
-        image = "white_bishop.png" if Colour == "White" else "black_bishop.png"
+        image = 'bishop'
         super().__init__(Colour, Coordinates, board, image)
 
     def movement(self):
@@ -337,7 +399,7 @@ class Bishop(Piece):
 class Knight(Piece):
     name = "N"
     def __init__(self, Colour, Coordinates, board):
-        image = "white_knight.png" if Colour == "White" else "black_knight.png"
+        image = 'knight'
         super().__init__(Colour, Coordinates, board, image)
     
     def movement(self):
@@ -379,7 +441,7 @@ class King(Piece):
     
 
     def __init__(self, Colour, Coordinates, board):
-        image = "white_king.png" if Colour == "White" else "black_king.png"
+        image = 'king'
         super().__init__(Colour, Coordinates, board, image)
     
     
@@ -460,20 +522,16 @@ class King(Piece):
             if not move.out_of_bounds() and not self.predict_check(move) and self.find_piece(move).colour != self.colour:
                 valid.append(move)
         if self.moved == False:
-            left, right = self.horizontal()
             for i in range(-1,2,2):
-                current = left if i == -1 else right
-                for piece in current:
-                    if piece and piece.coord[0] not in [0,7] and piece.name != "R":
-                        break
-                    else:
-                        if piece.moved == False and not (self.attacks["knight"] or len(self.attacks) > 1):
-                            new_coord = self.coord + (i*2,0)
-                            if not self.predict_check(new_coord) and not self.predict_check(new_coord + (-i,0)):
-                                valid.append(self.coord + (i*2,0))
-                                r = 7 if i == 1 else 0
-                                valid.append(Coordinate((r,self.coord[1])))
-                            
+                r = 7 if i == 1 else 0
+                piece = self.find_piece((r, self.coord[1]))
+                if piece.name == "R" and piece.moved == False and not (self.attacks["knight"] or len(self.attacks) > 1):
+                    new_coord = self.coord + (i*2,0)
+                    if not self.predict_check(new_coord) and not self.predict_check(new_coord + (-i,0)):
+                        valid.append(new_coord)
+                        valid.append(Coordinate((r, self.coord[1])))
+
+                       
                 
         
         self.valid = valid

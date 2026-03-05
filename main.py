@@ -45,18 +45,16 @@ while running:
                         clicked_piece = piece
                         b.unhighlight_squares()
                         b.highlight_squares(piece.valid_moves(), piece.coord)
-    
         
-        
-            
-        
-
         if event.type == pygame.MOUSEBUTTONUP:
             if clicked_piece:
                 for square in b.squares:
                     if square.rect.collidepoint(pygame.mouse.get_pos()):
-                        if square.coord in clicked_piece.valid:
-                            b.move_piece(clicked_piece, square.coord)
+                        promoted = True
+                        if clicked_piece.name == "P" and square.coord[1] in [0,7] and square.coord in clicked_piece.valid:
+                            promoted = clicked_piece.promote(screen, b.length, square.coord)
+                        if square.coord in clicked_piece.valid and promoted:
+                            b.move_piece(clicked_piece, square.coord)       
                             b.unhighlight_squares()
                             clicked_piece.click = False
                             clicked_piece = None  
@@ -65,6 +63,7 @@ while running:
                             clicked_piece.rect.center = old_pos
                             clicked_piece.click = False
     
+
     if clicked_piece:
         for square in b.squares:
             if square.rect.collidepoint(pygame.mouse.get_pos()) and square.coord in (*clicked_piece.valid, clicked_piece.coord):
@@ -80,7 +79,7 @@ while running:
     b.piece_sprites.update()
     b.squares.update(screen)
     b.piece_sprites.draw(screen)
-
+    
     if len((king := b.kings[current]).attacks) > 1 and len(king.valid_moves()) == 0:
         checkmate = True
         for piece in b.piece_sprites:
