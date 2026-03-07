@@ -2,10 +2,12 @@ from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING
 import pygame
-import os
+
 from constants import *
+import io
 if TYPE_CHECKING:
     from board import Board
+
 
 
 
@@ -41,7 +43,10 @@ class Coordinate():
     def __le__(self,other):
         return self < other or self == other
     def __mul__(self, other):
-        return Coordinate((self.coord[0]*other[0], self.coord[1]*other[1]))
+        if isinstance(other, tuple):
+            return Coordinate((self.coord[0]*other[0], self.coord[1]*other[1]))
+        elif isinstance(other, int):
+            return Coordinate((self.coord[0]*other, self.coord[1]*other))
     
     def convert(self, start = (0,0), board_length=1) -> tuple:
         return (self * (board_length/8, -board_length/8) + (board_length/16, 15*board_length/16) + start).coord
@@ -64,7 +69,7 @@ class Piece(pygame.sprite.Sprite):
     
     click = False
 
-    def __init__(self, Colour, Coordinates, board, image):
+    def __init__(self, Colour, Coordinates, board):
         pygame.sprite.Sprite.__init__(self)
         self.moved = False
         self.colour = Colour
@@ -76,7 +81,7 @@ class Piece(pygame.sprite.Sprite):
             self.Opposite = "White"
         
         length = self.board.length
-        self.image = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'assets', Colour.lower() + '_' + image + '.png')).convert_alpha(),(7*length/80, 7*length/80))
+        self.image = pygame.image.load(os.path.join(GAME_FOLDER, 'assets', Colour.lower()[0] + self.name + '.svg'))
         self.rect = self.image.get_rect()
         self.rect.center = self.coord.convert((0,0), length)
         
@@ -266,9 +271,7 @@ class None_piece(Piece):
 class Queen(Piece):
     name = "Q"
     move_direction = [(1,1),(-1,-1),(1,-1),(-1,1),(-1,0),(1,0),(0,-1),(0,1)]
-    def __init__(self, Colour, Coordinates, board):
-        image = 'queen'
-        super().__init__(Colour, Coordinates, board, image)
+    
     def movement(self):
         return super().movement(*self.bdiagonal(), *self.wdiagonal(), *self.horizontal(), *self.vertical() )
 
@@ -276,9 +279,6 @@ class Pawn(Piece):
     
     moved_twice = False
     name = "P"
-    def __init__(self, Colour, Coordinates, board):
-        image = 'pawn'
-        super().__init__(Colour, Coordinates, board, image)
     
         
     def movement(self):
@@ -314,19 +314,24 @@ class Pawn(Piece):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                    pygame.quit()
+                    exit()
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if not p.rect.collidepoint(pygame.mouse.get_pos()):
                         running = False
-                        return False
+                        return None_piece(self.coord, self.board)
+                    else:
+                        for piece in p.promote_pieces:
+                            if p.promote_pieces[piece][1].collidepoint(pygame.mouse.get_pos()):
+                                return p.promote_pieces[piece][2](self.colour, self.coord, self.board)
+                                
 
             
                     
             surface.fill("black")
             surface.blit(s, (0,0))
             
-            for piece in p.promote_pieces.values():
-                if piece[1].collidepoint(pygame.mouse.get_pos()):
-                    pygame.draw.rect(surface, (255,0,0,0), piece[1].scale_by(1.2) )
+            
             sprites.update()
             sprites.draw(surface)
             
@@ -342,14 +347,20 @@ class promote_window(pygame.sprite.Sprite):
         self.image = pygame.Surface((50,200), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         self.rect.topleft = coord.convert((-25,-25), length)
-        self.promote_pieces = {"Queen":[None, None], "Rook":[None, None], "Knight":[None, None], "Bishop":[None, None]}
-
+        self.promote_pieces = {"Queen":[None, None, Queen], "Rook":[None, None, Rook], "Night":[None, None, Knight], "Bishop":[None, None, Bishop]}
+        
+        self.colour = colour
         self.length = length
+
+        
+
+        
+
         current = Coordinate((8,8))
         current2 = Coordinate(self.rect.topleft) + (8,8)
         
         for piece in self.promote_pieces:
-            self.promote_pieces[piece][0] = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'assets', colour.lower() + '_' + piece.lower() + '.png')), (7*length/80, 7*length/80)).convert_alpha()
+            self.promote_pieces[piece][0] = load_and_scale_svg(f'assets/{self.colour[0].lower()}{piece[0]}.svg', 1)
             self.promote_pieces[piece][1] = self.promote_pieces[piece][0].get_rect()
             self.promote_pieces[piece][1].topleft = current.coord
             self.image.blit(self.promote_pieces[piece][0], self.promote_pieces[piece][1])
@@ -361,14 +372,18 @@ class promote_window(pygame.sprite.Sprite):
         self.image = pygame.Surface((50,200), pygame.SRCALPHA)
         circle_center = Coordinate((25,25))
         
-        for piece in self.promote_pieces.values():
-            scale = 1
-            if piece[1].collidepoint(pygame.mouse.get_pos()):
-                pygame.draw.rect(self.image, (0,128,128,0), piece[1].scale_by(1.2) )
+        for piece in self.promote_pieces:
+            
+            r = pygame.Rect(*((circle_center-(25,25)).coord), 50, 50)
+            if self.promote_pieces[piece][1].collidepoint(pygame.mouse.get_pos()):
+                pygame.draw.rect(self.image, (0,128,128,128), r)
                 scale = 1.2
+                
             else:
-                pygame.draw.circle(self.image, (128,128,128), circle_center.coord, 7*self.length/120)
-            self.image.blit(pygame.transform.scale_by(piece[0], scale).convert_alpha(), (circle_center+(-17,-17)).coord)
+                scale = 1
+                self.image.blit(pygame.image.load('assets/circle.svg'),(circle_center-(25,25)).coord)
+                
+            self.image.blit(load_and_scale_svg(f'assets/{self.colour[0].lower()}{piece[0]}.svg', scale), (circle_center - (22*scale,22*scale)).coord)
             circle_center = circle_center + (0,50)
             
 
@@ -376,10 +391,7 @@ class Rook(Piece):
     name = "R"
     
     move_direction = [(-1,0),(1,0),(0,-1),(0,1)]
-    def __init__(self, Colour, Coordinates, board):
-        image = 'rook'
-        super().__init__(Colour, Coordinates, board, image)
-        
+    
         
     def movement(self):
         return super().movement(*self.horizontal(), *self.vertical())
@@ -389,21 +401,15 @@ class Rook(Piece):
 class Bishop(Piece):
     name = "B"
     move_direction = [(1,1),(-1,-1),(-1,1),(1,-1)]
-    def __init__(self, Colour, Coordinates, board):
-        image = 'bishop'
-        super().__init__(Colour, Coordinates, board, image)
-
+    
     def movement(self):
         
         return super().movement(*self.bdiagonal(), *self.wdiagonal())
 class Knight(Piece):
     name = "N"
-    def __init__(self, Colour, Coordinates, board):
-        image = 'knight'
-        super().__init__(Colour, Coordinates, board, image)
     
     def movement(self):
-        moves = [self.coord + Coordinate((i,j)) for i in [-1,1,-2,2] for j in [-1,1,-2,2] if abs(i*j) == 2]
+        moves = [self.coord + (i,j) for i in range(-2,3) for j in range(-2,3) if abs(i*j) == 2]
         return moves
 
     def valid_moves(self):
@@ -440,9 +446,6 @@ class King(Piece):
     attacks = {"knight":None}
     
 
-    def __init__(self, Colour, Coordinates, board):
-        image = 'king'
-        super().__init__(Colour, Coordinates, board, image)
     
     
     def check_in_check(self):
@@ -525,7 +528,7 @@ class King(Piece):
             for i in range(-1,2,2):
                 r = 7 if i == 1 else 0
                 piece = self.find_piece((r, self.coord[1]))
-                if piece.name == "R" and piece.moved == False and not (self.attacks["knight"] or len(self.attacks) > 1):
+                if piece.name == "R" and piece.moved == False and not (self.attacks["knight"] or len(self.attacks) > 1) and not any(map(self.find_piece, [self.coord + (k*i,0) for k in range(1, int(3+(1-i)/2))])):
                     new_coord = self.coord + (i*2,0)
                     if not self.predict_check(new_coord) and not self.predict_check(new_coord + (-i,0)):
                         valid.append(new_coord)

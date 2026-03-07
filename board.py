@@ -49,7 +49,7 @@ class Board():
         self.length = length
         for i in range(8):
             for j in range(8):
-                colour = (0,0,0) if (i+j)%2 == 0 else (255,255,255)
+                colour = (200,157,124) if (i+j)%2 == 0 else (237,232,208)
                 square = Square(pieces.Coordinate((i,j)), length, colour)
                 self.squares.add(square)
                 
@@ -179,6 +179,11 @@ class Board():
         self.Pieces[new] = piece
         self.Pieces[new].rect.center = new.convert((0,0), self.length)
         piece.coord.coord = new
+
+        if piece.king:
+            piece.set_king(self.kings[piece.colour])
+        if piece not in self.piece_sprites:
+            self.piece_sprites.add(piece)
 
         
 

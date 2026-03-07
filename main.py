@@ -53,6 +53,11 @@ while running:
                         promoted = True
                         if clicked_piece.name == "P" and square.coord[1] in [0,7] and square.coord in clicked_piece.valid:
                             promoted = clicked_piece.promote(screen, b.length, square.coord)
+                            if promoted:
+                                b.piece_sprites.remove(clicked_piece)
+                                b.Pieces[clicked_piece.coord] = promoted
+                                clicked_piece = promoted
+                            
                         if square.coord in clicked_piece.valid and promoted:
                             b.move_piece(clicked_piece, square.coord)       
                             b.unhighlight_squares()
@@ -62,7 +67,7 @@ while running:
                         else:
                             clicked_piece.rect.center = old_pos
                             clicked_piece.click = False
-    
+                            
 
     if clicked_piece:
         for square in b.squares:
