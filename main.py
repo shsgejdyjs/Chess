@@ -21,6 +21,7 @@ b = board.Board()
 
 
 clicked_piece = None
+clicked_once = False
 
 current = "White"
 swap = {"White":"Black", "Black":"White"}
@@ -37,12 +38,15 @@ while running:
             running = False
         if event.type == pygame.MOUSEBUTTONDOWN:
 
-            #unhighlight a piece if clicking it again
+
+            # unhighlight a piece if clicking it again
             if clicked_piece:
                 for square in b.squares:
                     if square.rect.collidepoint(pygame.mouse.get_pos()) and square.coord in clicked_piece.valid:
                         break
                 else:
+                    if not clicked_piece.rect.collidepoint(pygame.mouse.get_pos()):
+                        clicked_once = False
                     clicked_piece = None
                     b.unhighlight_squares()
 
@@ -64,27 +68,35 @@ while running:
                 for square in b.squares:
                     if square.rect.collidepoint(pygame.mouse.get_pos()):
                         promoted = True
-
+                        
                         if clicked_piece.name == "P" and square.coord[1] in [0,7] and square.coord in clicked_piece.valid:
-                            clicked_piece.rect.center = square.coord.convert()
+                            screen.fill("black")
+                            b.squares.update(screen)
+                            b.piece_sprites.remove(clicked_piece)
                             b.piece_sprites.draw(screen)
                             pygame.display.flip()
                             promoted = clicked_piece.promote(screen, b.length, square.coord)
                             if promoted:
-                                b.piece_sprites.remove(clicked_piece)
                                 b.Pieces[clicked_piece.coord] = promoted
                                 clicked_piece = promoted
+                            else:
+                                b.piece_sprites.add(clicked_piece)
                                 
                             
                         if square.coord in clicked_piece.valid and not isinstance(promoted, pieces.None_piece) or (promoted and isinstance(promoted, pieces.Piece)):
                             b.move_piece(clicked_piece, square.coord)       
-                            b.unhighlight_squares()
-                            clicked_piece.click = False
-                            clicked_piece = None  
+                            
                             current = swap[current]   
                         else:
                             clicked_piece.rect.center = old_pos
                             clicked_piece.click = False
+                        if clicked_once:
+                            b.unhighlight_squares()
+                            clicked_piece.click = False
+                            clicked_piece = None 
+                            clicked_once = False 
+                        else:
+                            clicked_once = True
                             
 
     if clicked_piece:

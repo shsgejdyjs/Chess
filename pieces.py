@@ -45,7 +45,7 @@ class Coordinate():
     def __mul__(self, other):
         if isinstance(other, tuple):
             return Coordinate((self.coord[0]*other[0], self.coord[1]*other[1]))
-        elif isinstance(other, int):
+        elif isinstance(other, (int, float)):
             return Coordinate((self.coord[0]*other, self.coord[1]*other))
     
     def convert(self, start = (0,0), board_length=1) -> tuple:
@@ -318,6 +318,9 @@ class Pawn(Piece):
         sprites = pygame.sprite.Group(p)
         running = True
         s = surface.copy()
+        darken = pygame.surface.Surface((400,400),pygame.SRCALPHA)
+        darken.fill((0,0,0,128))
+        
         while running:
             
             for event in pygame.event.get():
@@ -340,6 +343,8 @@ class Pawn(Piece):
             surface.fill("black")
             surface.blit(s, (0,0))
             
+            surface.blit(darken, (0,0))
+            
             
             sprites.update()
             sprites.draw(surface)
@@ -355,7 +360,11 @@ class promote_window(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((50,200), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
-        self.rect.topleft = coord.convert((-25,-25), length)
+
+        self.start = Coordinate((0,0)) if colour == "White" else Coordinate((0,-150))
+        self.rect.topleft = (self.start + coord.convert((-25,-25), length)).coord
+        
+        
         self.promote_pieces = {"Queen":[None, None, Queen], "Rook":[None, None, Rook], "Night":[None, None, Knight], "Bishop":[None, None, Bishop]}
         
         self.colour = colour
@@ -363,16 +372,17 @@ class promote_window(pygame.sprite.Sprite):
 
 
         
-        current = Coordinate(self.rect.topleft) + (8,8)
-        
+        current = Coordinate(self.rect.topleft) + self.start *-1
+        self.direction = 1 if colour == "White" else -1
         for piece in self.promote_pieces:
             self.promote_pieces[piece][1] = pygame.rect.Rect(0,0,50,50)
             self.promote_pieces[piece][1].topleft = current.coord
-            current = current + (0,50)
+            current = current + (0,50*self.direction)
             
     def update(self):
         self.image = pygame.Surface((50,200), pygame.SRCALPHA)
-        circle_center = Coordinate((25,25))
+        
+        circle_center = Coordinate((25,25)) + self.start * -1
         
         for piece in self.promote_pieces:
             
@@ -383,11 +393,10 @@ class promote_window(pygame.sprite.Sprite):
                 
             else:
                 scale = 1
-                
                 self.image.blit(pygame.image.load(os.path.join(GAME_FOLDER, 'assets', 'circle.svg')),(circle_center-(25,25)).coord)
                 
             self.image.blit(load_and_scale_svg(os.path.join(GAME_FOLDER, 'assets', f'{self.colour[0].lower()}{piece[0]}.svg'), scale), (circle_center - (22*scale,22*scale)).coord)
-            circle_center = circle_center + (0,50)
+            circle_center = circle_center + (0,50*self.direction)
             
 
 class Rook(Piece):
