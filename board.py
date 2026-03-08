@@ -112,6 +112,7 @@ class Board():
             if (piece := self.Pieces[coord]):
                 piece.set_king(self.kings[piece.colour])
                 self.piece_sprites.add(piece)
+                piece.set_board(self)
                 
                 
     
@@ -180,10 +181,11 @@ class Board():
         self.Pieces[new].rect.center = new.convert((0,0), self.length)
         piece.coord.coord = new
 
-        if piece.king:
+        if not piece.king:
             piece.set_king(self.kings[piece.colour])
-        if piece not in self.piece_sprites:
-            self.piece_sprites.add(piece)
+        # if not self.piece_sprites.has(piece):
+        self.piece_sprites.add(piece)
+        
 
         
 
