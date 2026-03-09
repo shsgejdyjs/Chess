@@ -85,15 +85,19 @@ while running:
                             
                         if square.coord in clicked_piece.valid and not isinstance(promoted, pieces.None_piece) or (promoted and isinstance(promoted, pieces.Piece)):
                             b.move_piece(clicked_piece, square.coord)       
-                            
+                            b.unhighlight_squares()
+                            clicked_piece.click = False
+                            clicked_piece = None 
                             current = swap[current]   
                         else:
                             clicked_piece.rect.center = old_pos
                             clicked_piece.click = False
+                        
                         if clicked_once:
                             b.unhighlight_squares()
-                            clicked_piece.click = False
-                            clicked_piece = None 
+                            if clicked_piece:
+                                clicked_piece.click = False
+                                clicked_piece = None 
                             clicked_once = False 
                         else:
                             clicked_once = True
